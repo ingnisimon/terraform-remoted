@@ -1,0 +1,42 @@
+name: Deploy Dev Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'environments/dev/**'
+      - 'modules/**'
+
+permissions:
+  id-token: write # Required to request the OIDC token
+  contents: read  # Required to checkout the code
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./environments/dev
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::384518871764:role/GitHubActionsTerraformRole
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
