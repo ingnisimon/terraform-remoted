@@ -83,3 +83,43 @@ resource "aws_lambda_function" "visitor_counter" {
     }
   }
 }
+# 5. API Gateway HTTP API
+resource "aws_apigatewayv2_api" "http_api" {
+  name          = "${var.environment}-${var.app_name}-api"
+  protocol_type = "HTTP"
+}
+
+# 6. API Gateway Stage
+resource "aws_apigatewayv2_stage" "api_stage" {
+  api_id      = aws_apigatewayv2_api.http_api.id
+  name        = var.environment
+  auto_deploy = true
+}
+
+# 7. API Gateway Integration with Lambda
+resource "aws_apigatewayv2_integration" "lambda_integration" {
+  api_id                 = aws_apigatewayv2_api.http_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.visitor_counter.invoke_arn
+  payload_format_version = "2.0"
+}
+
+# 8. API Gateway Route
+resource "aws_apigatewayv2_route" "default_route" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+}
+
+# 9. Lambda Permission to allow API Gateway invocation
+resource "aws_lambda_permission" "api_gw_invoke" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.visitor_counter.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*"
+}
+output "api_endpoint" {
+  value       = aws_apigatewayv2_stage.api_stage.invoke_url
+  description = "The live URL of the API Gateway stage."
+}
