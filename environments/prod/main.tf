@@ -19,3 +19,6 @@ module "serverless_app" {
   db_read_capacity  = 5
   db_write_capacity = 5
 }
+output "prod_api_url" {
+  value = module.serverless_app.api_endpoint
+}
